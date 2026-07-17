@@ -347,12 +347,30 @@ fn handle_stop_listening(
         audio_data
     };
 
+    // Trim leading silence to reduce transcription time
+    // (the 2-second pre-roll often contains silence before speech starts)
+    let audio_data = if audio_data.len() > 16000 {
+        // threshold=500 (~1.5% of full scale), margin=3200 samples (200ms @ 16kHz)
+        let trimmed = trim_leading_silence(&audio_data, 500, 3200);
+        if trimmed.len() < audio_data.len() {
+            let trimmed_len = audio_data.len() - trimmed.len();
+            log::info!(
+                "Trimmed {} samples ({:.1}s) of leading silence",
+                trimmed_len,
+                trimmed_len as f64 / 16000.0
+            );
+        }
+        trimmed.to_vec()
+    } else {
+        audio_data
+    };
+
     log::info!("Transcribing {} samples ({:.1}s@16kHz)...", audio_data.len(), audio_data.len() as f64 / 16000.0);
 
     // Release the config lock before the blocking transcription
     drop(config);
 
-    // Perform transcription (blocking — GPU context created on-demand)
+    // Perform transcription
     let start_time = Instant::now();
     let result = asr_engine.transcribe(&audio_data);
     let elapsed = start_time.elapsed();
@@ -412,5 +430,23 @@ fn mute_microphone() {
         .output();
     if let Err(e) = result {
         log::debug!("Could not mute mic: {}", e);
+    }
+}
+
+/// Trim leading silence from audio samples to reduce transcription time.
+///
+/// Scans from the start for the first sample above `threshold` (i16 amplitude),
+/// then steps back `margin_samples` to keep a small buffer of context.
+/// If no speech is found the entire buffer is returned unchanged.
+fn trim_leading_silence(samples: &[i16], threshold: i16, margin_samples: usize) -> &[i16] {
+    let start = samples
+        .iter()
+        .position(|&s| s.abs() > threshold)
+        .unwrap_or(0);
+    if start > 0 {
+        let trim_start = start.saturating_sub(margin_samples);
+        &samples[trim_start..]
+    } else {
+        samples
     }
 }

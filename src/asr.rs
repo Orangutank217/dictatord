@@ -2,16 +2,24 @@ use crate::config::AsrConfig;
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
 
 /// Speech-to-text engine wrapping whisper.cpp.
+///
 /// The model is kept in system RAM as a byte buffer.
-/// GPU memory is only allocated during transcription, then freed.
+/// A GPU-accelerated WhisperContext is created once at startup (if GPU is available)
+/// and reused for every transcription — avoiding costly GPU re-initialization.
 pub struct ASREngine {
     model_buffer: Vec<u8>,
     config: AsrConfig,
+    /// Cached GPU context, created eagerly at startup.
+    /// If GPU init fails, this is `None` and we fall back to CPU-only per-call.
+    gpu_ctx: Option<WhisperContext>,
 }
 
 impl ASREngine {
     /// Initialize the ASR engine from a model buffer.
-    /// Validates the model by briefly loading it on CPU — no GPU usage at startup.
+    ///
+    /// 1. Validates the model on CPU (quick check).
+    /// 2. If GPU offload is enabled, pre-initializes the GPU context so the
+    ///    first dictation does not pay the CUDA setup cost.
     pub fn new(model_buffer: Vec<u8>, config: &AsrConfig) -> anyhow::Result<Self> {
         log::info!("Validating model from buffer ({} MB)...", model_buffer.len() / 1_048_576);
 
@@ -22,32 +30,54 @@ impl ASREngine {
         };
         let _validate_ctx = WhisperContext::new_from_buffer_with_params(&model_buffer, validate_params)
             .map_err(|e| anyhow::anyhow!("Invalid or corrupted model: {}", e))?;
-        // Drop immediately — no GPU used, just checks model format
         log::info!("Model validated successfully");
 
-        if config.gpu_offload {
+        // Pre-initialize GPU context at startup (if enabled)
+        let gpu_ctx = if config.gpu_offload {
             log::info!(
-                "GPU will be used on-demand for transcription (device={}, flash_attn={})",
+                "Pre-initializing GPU context (device={}, flash_attn={})...",
                 config.gpu_device,
-                config.flash_attn
+                config.flash_attn,
             );
+            let ctx_params = WhisperContextParameters {
+                use_gpu: true,
+                gpu_device: config.gpu_device,
+                flash_attn: config.flash_attn,
+                ..Default::default()
+            };
+            match WhisperContext::new_from_buffer_with_params(&model_buffer, ctx_params) {
+                Ok(ctx) => {
+                    log::info!("GPU context initialized and cached — subsequent transcriptions will reuse it");
+                    Some(ctx)
+                }
+                Err(e) => {
+                    log::warn!(
+                        "GPU context creation failed at startup: {}. \
+                         Will fall back to CPU for this session.",
+                        e
+                    );
+                    None
+                }
+            }
         } else {
             log::info!(
                 "GPU acceleration disabled, using CPU ({} threads)",
                 config.num_threads
             );
-        }
+            None
+        };
 
         Ok(ASREngine {
             model_buffer,
             config: config.clone(),
+            gpu_ctx,
         })
     }
 
     /// Transcribe audio samples to text.
-    /// Creates a GPU context on-demand from the cached model buffer, runs inference,
-    /// then drops it — GPU memory is freed after each transcription.
-    /// Uses simple greedy sampling with best_of=5 for reliability.
+    ///
+    /// Reuses the cached GPU context when available (fast path), or creates a
+    /// fresh CPU context each call (fallback path).
     pub fn transcribe(&self, audio: &[i16]) -> anyhow::Result<String> {
         if audio.is_empty() {
             log::warn!("transcribe called with empty audio");
@@ -66,42 +96,36 @@ impl ASREngine {
         let peak = audio.iter().map(|&s| s.abs()).max().unwrap_or(0);
         log::debug!("Audio stats: RMS={:.1}, peak={}, len={}", rms, peak, audio.len());
 
-        // Convert i16 samples directly to f32 [-1.0, 1.0] — no normalization
+        // Convert i16 samples directly to f32 [-1.0, 1.0]
         let audio_f32: Vec<f32> = audio
             .iter()
             .map(|&s| (s as f32 / 32768.0).clamp(-1.0, 1.0))
             .collect();
 
-        // -- Create GPU context on-demand from cached buffer --
-        let ctx_start = std::time::Instant::now();
-        let ctx_params = WhisperContextParameters {
-            use_gpu: self.config.gpu_offload,
-            gpu_device: self.config.gpu_device,
-            flash_attn: self.config.flash_attn,
-            ..Default::default()
+        // --- Create a WhisperState from our cached or fallback context ---
+        let mut state = if let Some(ref ctx) = self.gpu_ctx {
+            // Fast path: reuse the cached GPU context
+            ctx.create_state()
+                .map_err(|e| anyhow::anyhow!("Failed to create whisper state from cached GPU context: {}", e))?
+        } else {
+            // Fallback: create a fresh CPU context each call
+            // Don't retry GPU if it failed at startup — use CPU-only context
+            let ctx_params = WhisperContextParameters {
+                use_gpu: false,
+                ..Default::default()
+            };
+            let ctx = WhisperContext::new_from_buffer_with_params(&self.model_buffer, ctx_params)
+                .map_err(|e| anyhow::anyhow!("Failed to create whisper CPU context: {}", e))?;
+            ctx.create_state()
+                .map_err(|e| anyhow::anyhow!("Failed to create whisper state: {}", e))?
         };
 
-        let ctx = WhisperContext::new_from_buffer_with_params(&self.model_buffer, ctx_params)
-            .map_err(|e| anyhow::anyhow!("Failed to create whisper context: {}", e))?;
-        let ctx_elapsed = ctx_start.elapsed();
-        log::debug!("Whisper context created in {:.0}ms", ctx_elapsed.as_secs_f64() * 1000.0);
-
-        // Create state
-        let mut state = ctx
-            .create_state()
-            .map_err(|e| anyhow::anyhow!("Failed to create whisper state: {}", e))?;
-
-        // Simple params: greedy sampling, no fancy thresholds
+        // --- Transcription params ---
         let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 5 });
         params.set_n_threads(self.config.num_threads);
         params.set_suppress_blank(true);
         params.set_suppress_nst(true);
-
-        // Always force English transcription.
-        // Whisper's multilingual models handle English best, and the user
-        // exclusively dictates in English. No branching, no config dependence.
         params.set_language(Some("en"));
-
         params.set_print_progress(false);
         params.set_print_timestamps(false);
         params.set_print_special(false);
@@ -132,8 +156,6 @@ impl ASREngine {
 
         let result = result.trim().to_string();
         log::info!("Transcribed: \"{}\"", &result);
-
-        // ctx and state are dropped here → GPU memory freed
 
         // Debug: save raw audio if transcription is empty (helps diagnose issues)
         if result.is_empty() && audio.len() > 1000 {
