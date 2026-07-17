@@ -383,9 +383,10 @@ fn handle_stop_listening(
         }
     }
 
-    // Re-mute microphone if needed
-    mute_microphone();
-
+    // Note: We no longer auto-mute the microphone here.
+    // Previously, mute_microphone() was called, which globally muted the
+    // default PulseAudio source and broke Discord's audio. The unmute on
+    // start is kept so the app can still capture audio.
     // Hide visualizer
     if config.visual.enabled {
         visual_tx.send(VisualCommand::Hide).ok();
