@@ -1,12 +1,27 @@
 [hotkey]
-# Key combination to activate dictation
-# Format: Modifier+Key (e.g. "Super+D", "Ctrl+Shift+D", "Alt+Space")
-key = "Super+D"
+# ──────────────────────────────────────────────────────
+#  🔑  CHOOSE YOUR OWN HOTKEY
+# ──────────────────────────────────────────────────────
+# Pick ANY key combination you like. Examples:
+#
+#   "§"              Section key (left of 1) — author's choice, no conflicts
+#   "Super+D"        Common but may conflict (Cinnamon, KDE, GNOME)
+#   "Ctrl+Shift+D"   Safe, unlikely to conflict with anything
+#   "Alt+Space"      Quick one-handed reach
+#   "F2"             Function key — rarely used by modern apps
+#   "Scroll_Lock"    Often-unused key, great for push-to-talk
+#
+# Format: Modifier+Key
+# Modifiers: Super, Ctrl, Alt, Shift (can combine, e.g. Ctrl+Alt+Shift+F1)
+# Keys: A-Z, 0-9, F1-F12, Space, Return, Tab, Escape, Scroll_Lock, etc.
+#
+# 💡 Run `dictatord --settings` after installing to change this interactively.
+key = "§"
 
-# Mode of operation: "toggle", "ptt", or "both"
-#   toggle - press to start, press again to stop
-#   ptt    - hold to record, release to transcribe (push-to-talk)
-#   both   - tap to toggle, hold for PTT
+# Mode: "toggle" | "ptt" | "both"
+#   toggle  — press to start, press again to stop
+#   ptt     — hold to record, release to transcribe (push-to-talk)
+#   both    — tap to toggle, hold for PTT (best of both worlds)
 mode = "both"
 
 [audio]

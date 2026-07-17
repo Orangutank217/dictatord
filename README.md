@@ -28,52 +28,47 @@
 
 ## Quick Install
 
-### Prerequisites
+Choose the path that's easiest for you:
 
-You need:
-- **Rust toolchain** (1.75+) — install from [rustup.rs](https://rustup.rs)
-- **System development libraries** (see table below)
-
-| Distro | Install Command |
-|--------|----------------|
-| **Ubuntu / Debian** | `sudo apt install libgtk-3-dev libx11-dev libxdo-dev libasound2-dev pkg-config` |
-| **Fedora** | `sudo dnf install gtk3-devel libX11-devel libxdo-devel alsa-lib-devel pkgconfig` |
-| **Arch** | `sudo pacman -S gtk3 libx11 libxdo alsa-lib pkg-config` |
-| **openSUSE** | `sudo zypper install gtk3-devel libX11-devel libxdo-devel alsa-devel pkg-config` |
-
-### Install from source
+### 🚀 One-liner (from source, requires Rust)
 
 ```bash
-# Clone (or download the release tarball)
+git clone https://github.com/Orangutank217/dictatord.git && cd dictatord && ./install.sh
+```
+
+### 📦 One-liner (pre-built binary, no Rust needed)
+
+_Available once the first release build completes:_
+
+```bash
+curl -L https://github.com/Orangutank217/dictatord/releases/latest/download/dictatord-v0.1.0-x86_64-linux.tar.gz | tar xz && cd dictatord-* && ./install.sh
+```
+
+### 🔧 Step by step
+
+<details>
+<summary>Click to expand for manual install instructions</summary>
+
+**1. Install system dependencies**
+
+| Distro | Command |
+|--------|---------|
+| Ubuntu / Debian | `sudo apt install libgtk-3-dev libx11-dev libxdo-dev libasound2-dev pkg-config` |
+| Fedora | `sudo dnf install gtk3-devel libX11-devel libxdo-devel alsa-lib-devel pkgconfig` |
+| Arch | `sudo pacman -S gtk3 libx11 libxdo alsa-lib pkg-config` |
+| openSUSE | `sudo zypper install gtk3-devel libX11-devel libxdo-devel alsa-devel pkg-config` |
+
+**2. Build & install**
+
+```bash
 git clone https://github.com/Orangutank217/dictatord.git
 cd dictatord
-
-# Run the install script
 ./install.sh
 ```
 
-Or using `make`:
+The script checks for missing deps (offers to install them), builds the binary, copies it to `~/.cargo/bin/`, creates a default config, and optionally enables the systemd service.
 
-```bash
-make && make install
-```
-
-The script will:
-1. Check for missing dependencies (and offer to install them)
-2. Build the binary
-3. Install to `~/.cargo/bin/`
-4. Create default config at `~/.config/dictatord/config.toml`
-5. Install the systemd user service
-6. Ask whether to enable the service for auto-start on login
-
-### Install from pre-built binary
-
-Download the latest tarball from the [Releases page](https://github.com/Orangutank217/dictatord/releases):
-
-```bash
-curl -L https://github.com/Orangutank217/dictatord/releases/latest/download/dictatord-x86_64-linux.tar.gz | tar xz
-./install.sh
-```
+</details>
 
 ---
 
@@ -94,28 +89,45 @@ make purge       # remove everything
 
 ---
 
-## Usage
+## First Steps
 
-### Start the daemon
+### 🔑 1. Choose your hotkey
+
+After installing, **the first thing you should do** is pick a hotkey that works for you:
 
 ```bash
-# Start manually
-dictatord
-
-# Or as a background service
-systemctl --user start dictatord
-systemctl --user enable dictatord   # auto-start on login
+dictatord --settings
 ```
 
-### Dictation
+This opens an interactive menu. Select **Hotkey** → **Key** and enter your preferred combination. Or edit `~/.config/dictatord/config.toml` directly:
 
-Press **Super+D** to start/stop dictation (configurable).
+```toml
+[hotkey]
+key = "§"   # ← Change this to whatever you want (e.g. "Ctrl+Shift+D", "F2", etc.)
+mode = "both"
+```
 
-| Mode | Behavior |
-|------|----------|
-| `toggle` | Press to start, press again to stop |
-| `ptt` | Hold to record, release to transcribe |
-| `both` | Tap to toggle, hold for PTT |
+See the [Configuration](#configuration) section for all available options.
+
+### 🎤 2. Start dictating
+
+```bash
+# Start the daemon
+dictatord
+
+# Or run it as a background service
+systemctl --user start dictatord
+```
+
+Press your hotkey and speak! The transcribed text appears at your cursor.
+
+### 📖 3. Learn the modes
+
+| Mode | How it works |
+|------|-------------|
+| `toggle` | Press hotkey to start recording, press again to stop & transcribe |
+| `ptt` (push-to-talk) | Hold hotkey while speaking, release to transcribe |
+| `both` | Quick tap = toggle, hold down = push-to-talk (best of both) |
 
 ### View logs
 
@@ -151,7 +163,7 @@ Config file: `~/.config/dictatord/config.toml`
 
 ```toml
 [hotkey]
-key = "Super+D"
+key = "§"                # ← CHANGE THIS to any key you want
 mode = "both"            # "toggle" | "ptt" | "both"
 
 [audio]

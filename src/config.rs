@@ -13,7 +13,7 @@ pub struct Config {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HotkeyConfig {
-    /// Key combination, e.g. "Super+D"
+    /// Key combination, e.g. "§" or "Super+D"
     pub key: String,
     /// "both" | "toggle" | "ptt"
     pub mode: String,
@@ -88,7 +88,7 @@ impl Default for Config {
     fn default() -> Self {
         Config {
             hotkey: HotkeyConfig {
-                key: "Super+D".to_string(),
+                key: "§".to_string(),
                 mode: "both".to_string(),
             },
             audio: AudioConfig {
