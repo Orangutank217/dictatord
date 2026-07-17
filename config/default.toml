@@ -1,0 +1,68 @@
+[hotkey]
+# Key combination to activate dictation
+# Format: Modifier+Key (e.g. "Super+D", "Ctrl+Shift+D", "Alt+Space")
+key = "Super+D"
+
+# Mode of operation: "toggle", "ptt", or "both"
+#   toggle - press to start, press again to stop
+#   ptt    - hold to record, release to transcribe (push-to-talk)
+#   both   - tap to toggle, hold for PTT
+mode = "both"
+
+[audio]
+# Audio input device ("default" uses system default microphone)
+device = "default"
+
+# Sample rate for audio capture (Hz). 16000 recommended for Whisper.
+sample_rate = 16000
+
+# Pre-roll buffer in milliseconds. Captures audio from before you press the button.
+pre_roll_ms = 2000
+
+# Silence timeout in ms before auto-stopping (toggle mode only)
+silence_timeout_ms = 600
+
+# VAD sensitivity threshold. Lower = more sensitive, higher = less false positives.
+vad_threshold = 2.5
+
+[asr]
+# Model size: "tiny" (fastest), "base" (balanced), "small" (accurate)
+model = "tiny"
+
+# Directory to store downloaded model files
+model_path = "~/.cache/dictatord/models/"
+
+# Language code for transcription. Empty string = auto-detect.
+language = "en"
+
+# Use GPU acceleration if available (requires CUDA toolkit)
+gpu_offload = false
+
+# Number of CPU threads for inference
+num_threads = 4
+
+[output]
+# Output method: "xdotool" (types at cursor position)
+method = "xdotool"
+
+# Auto-capitalize the first letter of transcribed text
+capitalize = true
+
+# Add a trailing space after transcription (useful for continuous dictation)
+add_trailing_space = true
+
+# Delay between simulated keystrokes in milliseconds (0 = instant)
+typing_delay_ms = 5
+
+[visual]
+# Enable the waveform visualizer overlay window
+enabled = true
+
+# Position on screen: "top-right"
+position = "top-right"
+
+# Hex color of the pulsing orb (cyan by default)
+color_hex = "#00CCFF"
+
+# Background opacity (0.0 = fully transparent, 1.0 = fully opaque)
+opacity = 0.85

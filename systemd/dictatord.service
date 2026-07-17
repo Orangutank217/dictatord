@@ -1,0 +1,14 @@
+[Unit]
+Description=dictatord - Native Speech-to-Text Daemon
+Documentation=https://github.com/aksil/dictatord
+After=sound.target graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.cargo/bin/dictatord
+Restart=on-failure
+RestartSec=3
+Environment=RUST_LOG=info
+
+[Install]
+WantedBy=default.target

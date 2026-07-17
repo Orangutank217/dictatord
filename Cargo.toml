@@ -1,0 +1,48 @@
+[package]
+name = "dictatord"
+version = "0.1.0"
+edition = "2021"
+description = "Native speech-to-text daemon with waveform visualization"
+authors = ["Orangutank217"]
+repository = "https://github.com/Orangutank217/dictatord"
+homepage = "https://github.com/Orangutank217/dictatord"
+license = "MIT"
+
+[features]
+default = []
+cuda = ["whisper-rs/cuda"]
+
+[dependencies]
+anyhow = "1"
+log = "0.4"
+env_logger = "0.11"
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+
+# Interactive CLI prompts
+inquire = "0.9"
+
+# Audio capture
+cpal = "0.18"
+
+# Audio processing
+sonora-ns = "0.1.0"
+
+# Speech recognition (CPU-only by default, enable 'cuda' feature for GPU)
+whisper-rs = "0.16"
+
+# Text output
+libxdo = "0.6"
+
+# Hotkey (X11)
+x11 = { version = "2.21", features = ["xlib"] }
+
+# Filesystem paths
+dirs = "5"
+
+# GUI visualizer
+gtk = "0.18"
+cairo-rs = "0.18"
+glib = "0.18"
