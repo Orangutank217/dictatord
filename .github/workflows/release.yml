@@ -15,7 +15,7 @@ jobs:
     name: Build and package
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -50,7 +50,7 @@ jobs:
           echo "Package created: $ARCHIVE_NAME.tar.gz"
 
       - name: Upload release asset
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: dictatord-*-x86_64-linux.tar.gz
           generate_release_notes: true
