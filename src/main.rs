@@ -423,16 +423,6 @@ fn unmute_microphone() {
     }
 }
 
-/// Try to mute the microphone via PulseAudio
-fn mute_microphone() {
-    let result = std::process::Command::new("pactl")
-        .args(["set-source-mute", "@DEFAULT_SOURCE@", "1"])
-        .output();
-    if let Err(e) = result {
-        log::debug!("Could not mute mic: {}", e);
-    }
-}
-
 /// Trim leading silence from audio samples to reduce transcription time.
 ///
 /// Scans from the start for the first sample above `threshold` (i16 amplitude),
